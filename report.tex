@@ -1,0 +1,512 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french, provide=*]{babel}
+\usepackage{graphicx}
+\usepackage{geometry}
+\setlength{\headheight}{15pt}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{array}
+
+% Mise en page
+\geometry{
+    a4paper,
+    total={170mm,257mm},
+    left=25mm,
+    top=25mm,
+    bottom=25mm,
+    right=25mm
+}
+
+% En-tête et Pied de page
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Projet CYBERML - 2026}
+\lhead{Groupe 9}
+\cfoot{Page \thepage}
+
+% Configuration du titre
+\title{
+    \vspace{2cm}
+    \textbf{\Huge Rapport de Projet CYBERML} \\
+    \vspace{1cm}
+    \textbf{\Large Chaîne de Traitement pour l'Analyse de Données de Cybersécurité} \\
+    \vspace{1cm}
+    \textbf{\large Jeu de Données Analysé : CIC IoT-DIAD 2024}
+}
+\author{
+    \textbf{Baptiste Villeneuve} \\
+    \textbf{Max Nagaishi} \\
+    \textbf{Alexis Petignat} \\
+    \textbf{Matthew Banawa} \\
+    \\
+    \textit{Numéro de Groupe : 9}
+}
+\date{28 Janvier 2026}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+La prolifération des appareils de l'Internet des Objets (IoT) dans les environnements industriels et grand public a créé une surface d'attaque massive pour les cybercriminels. Contrairement aux infrastructures informatiques traditionnelles, les appareils IoT souffrent souvent d'une puissance de calcul limitée, de mises à jour peu fréquentes et de protocoles hétérogènes, ce qui les rend vulnérables à un large éventail d'attaques réseau telles que le Déni de Service (DoS), l'Homme du Milieu (MitM) et les injections de logiciels malveillants.
+
+Le projet \textbf{CYBERML} vise à relever ces défis en concevant, déployant et évaluant une chaîne de traitement de données robuste dédiée à l'analyse de la cybersécurité. La philosophie centrale de ce projet est de tirer parti des techniques d'Apprentissage Automatique (Machine Learning - ML) pour automatiser la détection des activités malveillantes au sein du trafic réseau.
+
+Ce rapport documente l'ensemble du cycle de vie de notre analyse, de l'ingestion et du pré-traitement des données à l'évaluation rigoureuse (benchmarking) des algorithmes de classification et de détection d'anomalies. Nous avons choisi le jeu de données \textbf{CIC IoT-DIAD 2024} comme vérité terrain, en l'analysant à travers plusieurs configurations de fenêtres temporelles (1s, 3s, 5s, 7s) pour comprendre la dynamique temporelle de la détection d'attaques.
+
+\section{Objectifs du Projet}
+
+L'objectif principal est la construction d'une \textbf{Chaîne de Traitement par Lots (Batch Processing)}. Les objectifs analytiques spécifiques sont doubles :
+
+\begin{itemize}
+    \item \textbf{Objectif 1 : Classification et Détection d'Anomalies.}
+    \begin{itemize}
+        \item \textit{Classification Supervisée :} Entraîner des modèles pour distinguer le trafic 'Bénin' du trafic 'Attaque' en utilisant des données étiquetées.
+        \item \textit{Détection d'Anomalies Non Supervisée :} Déployer des algorithmes capables d'identifier les valeurs aberrantes dans les données sans connaissance préalable des étiquettes d'attaque, simulant un scénario de détection d'attaque "Zero-Day".
+        \item \textit{Caractérisation du Type d'Attaque :} Aller au-delà de la classification binaire pour identifier les vecteurs d'attaque précis (par ex., DDoS contre Bruteforce).
+    \end{itemize}
+    \item \textbf{Objectif 2 : Benchmarking et Évaluation.}
+    \begin{itemize}
+        \item Comparer les performances des modèles linéaires par rapport aux modèles non linéaires.
+        \item Évaluer l'impact des fenêtres d'agrégation du trafic (1 seconde contre 7 secondes).
+        \item Utiliser des métriques robustes incluant le Coefficient de Corrélation de Matthews (MCC), la Précision Équilibrée (Balanced Accuracy), la Précision et le Rappel (Recall).
+    \end{itemize}
+\end{itemize}
+
+\newpage
+\section{Caractérisation du Jeu de Données}
+
+\subsection{Sélection : CIC IoT-DIAD 2024}
+Nous avons sélectionné le jeu de données CIC IoT-DIAD 2024, une référence moderne pour la sécurité IoT. Il comprend un trafic réaliste généré à partir d'un banc d'essai d'appareils IoT subissant divers scénarios d'attaque.
+
+\subsection{Structure des Données}
+Les données sont fournies dans des fichiers CSV, agrégées par durée. Cette "durée" représente la fenêtre temporelle sur laquelle les caractéristiques des paquets réseau ont été calculées (par ex., taille moyenne des paquets sur 1 seconde).
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{l c c c}
+    \toprule
+    \textbf{Durée} & \textbf{Échantillons Attaque} & \textbf{Échantillons Bénins} & \textbf{Total} \\
+    \midrule
+    \textbf{1 Seconde} & 90 391 & 136 800 & 227 191 \\
+    \textbf{3 Secondes} & 29 627 & 45 600 & 75 227 \\
+    \textbf{5 Secondes} & 17 695 & 27 360 & 45 055 \\
+    \textbf{7 Secondes} & 12 050 & 19 532 & 31 582 \\
+    \bottomrule
+    \end{tabular}
+    \caption{Distribution du jeu de données selon les différentes fenêtres temporelles.}
+    \label{tab:dataset_dist}
+\end{table}
+
+\subsection{Hiérarchie des Étiquettes}
+Le jeu de données contient plusieurs colonnes d'étiquettes utilisées pour différentes granularités d'analyse :
+\begin{itemize}
+    \item \texttt{label1} : Classification Binaire (Bénin / Attaque).
+    \item \texttt{label2} : Catégorie d'Attaque (par ex., DoS, DDoS, Recon, Web, Bruteforce).
+\end{itemize}
+
+\subsection{Chaîne de Pré-traitement}
+Pour préparer les données pour nos modèles d'apprentissage automatique, nous avons mis en œuvre un pipeline de pré-traitement strict en Python :
+\begin{enumerate}
+    \item \textbf{Chargement :} Les données sont chargées dynamiquement en fonction de la durée cible.
+    \item \textbf{Imputation :} Les valeurs manquantes (\texttt{NaN}) sont remplies avec 0. Dans le contexte des caractéristiques réseau (comme "nombre d'erreurs"), une valeur manquante indique généralement l'absence d'un événement.
+    \item \textbf{Encodage :} Les étiquettes catégorielles sont factorisées en entiers. Une logique a été implémentée pour mapper ces entiers vers leurs représentations textuelles d'origine pour les rapports.
+    \item \textbf{Filtrage :} Les colonnes de caractéristiques non numériques sont supprimées pour assurer la compatibilité avec Scikit-Learn et XGBoost.
+    \item \textbf{Séparation :} Une séparation standard 80/20 Entraînement/Test est appliquée avec une graine aléatoire fixe (42) pour la reproductibilité.
+\end{enumerate}
+
+\newpage
+\section{Méthodologie}
+
+\subsection{Métriques de Performance}
+Compte tenu du déséquilibre potentiel des classes dans les jeux de données de cybersécurité, la simple précision (accuracy) est souvent trompeuse. Nous nous appuyons sur les métriques suivantes :
+
+\begin{itemize}
+    \item \textbf{Matrice de Confusion :} $TP, TN, FP, FN$.
+    \item \textbf{Précision (Precision) :} $\frac{TP}{TP+FP}$ (Faible taux de fausses alarmes).
+    \item \textbf{Rappel (Recall) :} $\frac{TP}{TP+FN}$ (Taux de détection élevé).
+    \item \textbf{Précision Équilibrée (Balanced Accuracy) :} Moyenne arithmétique de la Sensibilité et de la Spécificité.
+    \item \textbf{Coefficient de Corrélation de Matthews (MCC) :} Un coefficient de corrélation entre les classifications binaires observées et prédites. Il renvoie une valeur entre -1 et +1. Un coefficient de +1 représente une prédiction parfaite, 0 n'est pas meilleur qu'une prédiction aléatoire.
+\end{itemize}
+
+\subsection{Algorithmes Sélectionnés}
+
+\subsubsection{Apprentissage Supervisé}
+\begin{enumerate}
+    \item \textbf{XGBoost (Gradient Boosting) :} Un algorithme d'apprentissage automatique d'ensemble basé sur des arbres de décision qui utilise un cadre de boosting de gradient. C'est l'état de l'art pour les données tabulaires.
+    \item \textbf{Régression Logistique :} Un modèle statistique qui utilise une fonction logistique pour modéliser une variable dépendante binaire. Il sert de référence linéaire.
+    \item \textbf{Linear SVC :} Classification par Vecteurs de Support avec un noyau linéaire. Il tente de maximiser la marge entre les classes.
+\end{enumerate}
+
+\subsubsection{Apprentissage Non Supervisé (Détection d'Anomalies)}
+\begin{enumerate}
+    \item \textbf{Isolation Forest :} Un algorithme qui isole les observations en sélectionnant aléatoirement une caractéristique puis en sélectionnant aléatoirement une valeur de coupure. Les anomalies sont isolées plus rapidement (chemins plus courts) que les points normaux. Nous avons fixé la contamination $\approx 0.39$.
+    \item \textbf{One-Class SVM :} Capture la forme des données d'entraînement "Bénines" et classe les valeurs aberrantes. Nous avons utilisé un noyau linéaire et un sous-échantillonnage en raison de l'intensité de calcul.
+    \item \textbf{Local Outlier Factor (LOF) :} Un algorithme qui calcule la déviation de densité locale d'un point donné par rapport à ses voisins.
+\end{enumerate}
+
+\newpage
+\section{Résultats Expérimentaux : Durée 1 Seconde}
+
+Le jeu de données de fenêtre 1 seconde est le plus grand ($N=227 191$), offrant une analyse à haute fréquence mais potentiellement plus de bruit.
+
+\subsection{Résultats Apprentissage Supervisé}
+
+\subsubsection{XGBoost}
+XGBoost a démontré une performance supérieure, identifiant les attaques avec une haute précision.
+
+\textbf{Matrice de Confusion :}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+         & \textbf{Préd Bénin} & \textbf{Préd Attaque} \\
+        \hline
+        \textbf{Vrai Bénin} & 27 252 (TN) & 55 (FP) \\
+        \hline
+        \textbf{Vrai Attaque} & 2 405 (FN) & 15 727 (TP) \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\textbf{Métriques Détaillées :}
+\begin{itemize}
+    \item \textbf{Classe Bénin :} Précision 0.92, Rappel 1.00, F1 0.96
+    \item \textbf{Classe Attaque :} Précision 1.00, Rappel 0.87, F1 0.93
+    \item \textbf{Précision Globale :} 0.95
+    \item \textbf{Matthews Corrcoef (MCC) :} 0.8900
+    \item \textbf{Précision Équilibrée :} 0.9327
+\end{itemize}
+
+\subsubsection{Régression Logistique}
+La Régression Logistique a eu du mal par rapport à XGBoost, en particulier sur le Rappel (sensibilité).
+
+\textbf{Matrice de Confusion :}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+         & \textbf{Préd Bénin} & \textbf{Préd Attaque} \\
+        \hline
+        \textbf{Vrai Bénin} & 27 163 & 144 \\
+        \hline
+        \textbf{Vrai Attaque} & 4 903 & 13 229 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\textbf{Métriques Clés :}
+\begin{itemize}
+    \item \textbf{Rappel Attaque :} 0.73 (Significativement inférieur au 0.87 de XGBoost)
+    \item \textbf{MCC :} 0.7783
+    \item \textbf{Précision Équilibrée :} 0.8622
+\end{itemize}
+
+\subsubsection{Linear SVC}
+Le classifieur à vecteurs de support a performé marginalement mieux que la Régression Logistique.
+\begin{itemize}
+    \item \textbf{MCC :} 0.7950
+    \item \textbf{Précision Équilibrée :} 0.8748
+\end{itemize}
+
+\subsection{Résultats Apprentissage Non Supervisé}
+
+\subsubsection{Isolation Forest}
+Isolation Forest a été le meilleur performeur non supervisé.
+\begin{itemize}
+    \item \textbf{Matrice de Confusion :} TN: 22604, FP: 4703, FN: 5128, TP: 13004
+    \item \textbf{MCC :} 0.5472
+    \item \textbf{Analyse :} Bien que capturant une majorité d'attaques, le taux de Faux Positifs (prédisant le trafic bénin comme attaque) est élevé ($\sim$17\% du trafic bénin signalé).
+\end{itemize}
+
+\subsubsection{One-Class SVM \& LOF}
+Les deux méthodes basées sur la densité/frontière ont eu de mauvaises performances sur les données 1s à haute dimension.
+\begin{itemize}
+    \item \textbf{One-Class SVM MCC :} 0.4519
+    \item \textbf{LOF MCC :} 0.3112
+\end{itemize}
+
+\subsection{Importance des Caractéristiques (SHAP)}
+Les principales caractéristiques pilotant la détection pour la fenêtre 1s étaient :
+\begin{enumerate}
+    \item \texttt{network\_packet-size\_min} (Impact : 1.918)
+    \item \texttt{network\_time-delta\_min} (Impact : 1.442)
+    \item \texttt{network\_window-size\_min} (Impact : 1.312)
+\end{enumerate}
+Cela indique que les attaques à cette granularité sont mieux détectées en regardant les tailles minimales de paquets et la vitesse (delta temporel) des paquets entrants.
+
+\newpage
+\section{Résultats Expérimentaux : Durée 3 Secondes}
+
+La taille du jeu de données diminue ($N=75 227$), mais la stabilité des caractéristiques augmente probablement.
+
+\subsection{Résultats Apprentissage Supervisé}
+
+\subsubsection{XGBoost}
+La performance s'est notablement améliorée sur la fenêtre 3s.
+
+\textbf{Matrice de Confusion :}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+         & \textbf{Préd Bénin} & \textbf{Préd Attaque} \\
+        \hline
+        \textbf{Vrai Bénin} & 9 121 & 26 \\
+        \hline
+        \textbf{Vrai Attaque} & 481 & 5 418 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\textbf{Métriques Clés :}
+\begin{itemize}
+    \item \textbf{Rappel Attaque :} 0.92 (En hausse par rapport à 0.87 pour la fenêtre 1s)
+    \item \textbf{MCC :} 0.9303
+    \item \textbf{Précision Équilibrée :} 0.9578
+\end{itemize}
+
+\subsubsection{Régression Logistique \& SVC}
+Les deux modèles linéaires ont montré une amélioration mais sont restés en retrait par rapport à XGBoost.
+\begin{itemize}
+    \item \textbf{LogReg MCC :} 0.8083
+    \item \textbf{SVC MCC :} 0.8190
+\end{itemize}
+
+\subsection{Résultats Apprentissage Non Supervisé}
+La performance des modèles non supervisés a généralement diminué ou plafonné.
+\begin{itemize}
+    \item \textbf{Isolation Forest MCC :} 0.5030 (Inférieur à 1s)
+    \item \textbf{LOF MCC :} 0.2182 (Très faible)
+\end{itemize}
+
+\newpage
+\section{Résultats Expérimentaux : Durée 5 Secondes}
+
+\subsection{Résultats Apprentissage Supervisé}
+La tendance à l'amélioration de la performance supervisée se poursuit.
+
+\subsubsection{XGBoost}
+\textbf{Matrice de Confusion :}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+         & \textbf{Préd Bénin} & \textbf{Préd Attaque} \\
+        \hline
+        \textbf{Vrai Bénin} & 5 391 & 20 \\
+        \hline
+        \textbf{Vrai Attaque} & 202 & 3 398 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\textbf{Métriques Clés :}
+\begin{itemize}
+    \item \textbf{Précision Globale :} 0.98
+    \item \textbf{MCC :} 0.9491
+    \item \textbf{Rappel Attaque :} 0.94
+\end{itemize}
+
+\subsubsection{Régression Logistique \& SVC}
+Les deux ont atteint un MCC d'$\approx 0.82$, suggérant un "plafond" pour la séparabilité linéaire dans ce jeu de données.
+
+\subsection{Résultats Apprentissage Non Supervisé}
+\begin{itemize}
+    \item \textbf{Isolation Forest MCC :} 0.4610
+    \item \textbf{One-Class SVM MCC :} 0.2925
+\end{itemize}
+
+\newpage
+\section{Résultats Expérimentaux : Durée 7 Secondes}
+
+Il s'agit de la plus grande fenêtre d'agrégation.
+
+\subsection{Résultats Apprentissage Supervisé}
+
+\subsubsection{XGBoost - Performance Maximale}
+À 7 secondes, XGBoost atteint ses meilleurs résultats.
+
+\textbf{Matrice de Confusion :}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+         & \textbf{Préd Bénin} & \textbf{Préd Attaque} \\
+        \hline
+        \textbf{Vrai Bénin} & 3 868 & 14 \\
+        \hline
+        \textbf{Vrai Attaque} & 114 & 2 321 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\textbf{Métriques Détaillées :}
+\begin{itemize}
+    \item \textbf{Précision (Attaque) :} 0.99
+    \item \textbf{Rappel (Attaque) :} 0.95
+    \item \textbf{Précision Équilibrée :} 0.9748
+    \item \textbf{MCC :} 0.9574
+\end{itemize}
+
+\subsubsection{Régression Logistique \& SVC}
+Stables à un MCC $\approx 0.81$, confirmant que l'extension de la durée profite davantage aux modèles non linéaires complexes (XGBoost) qu'aux modèles linéaires.
+
+\subsection{Résultats Apprentissage Non Supervisé}
+Isolation Forest reste constant autour d'un MCC de 0.46. Il semble que pour la détection d'anomalies, l'agrégation des caractéristiques sur 7s ne rend pas les valeurs aberrantes plus distinctes d'une manière qu'Isolation Forest puisse exploiter mieux qu'à 1s.
+
+\subsection{Importance des Caractéristiques (7s)}
+Changement intéressant dans les caractéristiques par rapport à 1s :
+\begin{enumerate}
+    \item \texttt{network\_packet-size\_min} (Impact : 2.24)
+    \item \texttt{network\_time-delta\_min} (Impact : 1.79)
+    \item \texttt{network\_packets\_dst\_count} (Impact : 1.24)
+\end{enumerate}
+Le nombre de paquets de destination devient une des 3 meilleures caractéristiques à 7s, probablement parce que les anomalies basées sur le volume (comme les DoS) sont plus statistiquement significatives sur une fenêtre plus longue.
+
+\newpage
+\section{Analyse des Attaques Multiclasses}
+
+Au-delà de la détection binaire, nous avons évalué la capacité à classer des types d'attaques spécifiques. Nous avons utilisé les résultats de la fenêtre de 7 secondes pour cette analyse approfondie.
+
+\subsection{Types d'Attaques Évalués}
+Le jeu de données comprend : \textit{Malware, Recon, DoS, Web, DDoS, Bruteforce, MitM}.
+
+\subsection{Performance Multiclasse XGBoost}
+Le modèle a atteint un score F1 moyen pondéré de \textbf{0.97}.
+
+\textbf{Scores F1 par Classe :}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{l c c}
+    \toprule
+    \textbf{Type d'Attaque} & \textbf{Rappel} & \textbf{Score F1} \\
+    \midrule
+    Bénin & 1.00 & 0.98 \\
+    Malware & 0.96 & 0.97 \\
+    Recon & 0.92 & 0.94 \\
+    DoS & 0.96 & 0.97 \\
+    Web & 0.81 & 0.90 \\
+    DDoS & 0.90 & 0.94 \\
+    Bruteforce & 0.94 & 0.97 \\
+    MitM & 0.96 & 0.96 \\
+    \bottomrule
+    \end{tabular}
+    \caption{Performance de Classification Multiclasse (Fenêtre 7s)}
+\end{table}
+
+\subsection{Analyse de la Matrice de Confusion}
+La matrice de confusion révèle des erreurs de classification spécifiques :
+\begin{itemize}
+    \item \textbf{Reconnaissance :} Souvent confondu avec le trafic bénin ou d'autres attaques (Rappel de 0.92, inférieur aux DoS). C'est attendu car les scans de reconnaissance peuvent ressembler à des tentatives de connexion normales.
+    \item \textbf{Attaques Web :} Ont eu le rappel le plus faible (0.81). Les attaques Web ressemblent souvent à du trafic HTTP valide, ce qui les rend les plus difficiles à distinguer sur la base de simples statistiques réseau sans inspection approfondie des paquets (DPI).
+    \item \textbf{DDoS vs DoS :} Très haute précision pour distinguer ces deux types, probablement grâce aux caractéristiques \texttt{network\_macs\_all\_count} ou \texttt{ips\_src\_count} qui sont distinctes (Distribué vs Source Unique).
+\end{itemize}
+
+\newpage
+\section{Analyse Comparative et Discussion}
+
+\subsection{Impact de la Durée de la Fenêtre Temporelle}
+L'une des principales découvertes de cette étude est la corrélation positive entre la durée de la fenêtre temporelle et la performance de la classification pour les modèles supervisés.
+
+\begin{figure}[H]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    \textbf{Méthode} & \textbf{1s} & \textbf{3s} & \textbf{5s} & \textbf{7s} \\
+    \hline
+    XGBoost & 0.89 & 0.93 & 0.95 & 0.96 \\
+    \hline
+    LogReg & 0.78 & 0.81 & 0.82 & 0.82 \\
+    \hline
+    IsoForest & 0.55 & 0.50 & 0.46 & 0.47 \\
+    \hline
+    \end{tabular}
+    \caption{Tableau de Comparaison du MCC selon les Durées}
+\end{figure}
+
+\textbf{Interprétation :}
+\begin{itemize}
+    \item \textbf{Supervisé (XGBoost) :} Des fenêtres plus longues permettent aux caractéristiques statistiques (moyennes, écarts-types) de se stabiliser, formant des signatures plus claires pour les attaques. La variance du bruit dans les fenêtres de 1s crée plus de "zones grises" pour les classifieurs.
+    \item \textbf{Non Supervisé (IsoForest) :} La performance s'est en fait légèrement dégradée avec des fenêtres plus longues. Nous faisons l'hypothèse que de courtes rafales d'anomalies sont distinctes dans les fenêtres de 1s, mais sont "noyées dans la moyenne" et cachées à l'intérieur du trafic valide sur 7s, les rendant plus difficiles à isoler comme valeurs aberrantes.
+\end{itemize}
+
+\subsection{Supervisé vs. Non Supervisé}
+Les méthodes non supervisées ont significativement sous-performé par rapport aux méthodes supervisées ($MCC \approx 0.5$ vs $MCC > 0.9$).
+\begin{itemize}
+    \item \textbf{Implication :} Bien qu'Isolation Forest puisse détecter $\approx 70-80\%$ des attaques, le taux de fausses alarmes est trop élevé pour un déploiement autonome dans une infrastructure critique. Cela nécessite une validation humaine ou un filtre secondaire.
+    \item \textbf{Usage :} Les méthodes non supervisées restent précieuses pour la \textbf{défense de Niveau 1} ou comme solution de repli pour détecter de nouvelles attaques que le modèle supervisé (entraîné sur des attaques connues) pourrait manquer.
+\end{itemize}
+
+\subsection{Stabilité des Caractéristiques}
+À travers toutes les durées, \texttt{network\_time-delta\_min} et \texttt{network\_packet-size\_min} sont restées les meilleures caractéristiques. Cela suggère que la \textit{cadence} et la \textit{taille de la charge utile} des paquets sont les empreintes invariantes de ces attaques IoT, quelle que soit la fenêtre d'agrégation.
+
+\newpage
+\section{Conclusion et Perspectives}
+
+Le projet \textbf{CYBERML} a réussi à déployer une chaîne de données pour analyser le jeu de données CIC IoT-DIAD 2024.
+
+\subsection{Résumé des Réalisations}
+\begin{enumerate}
+    \item \textbf{Déploiement de la Chaîne de Données :} Un pipeline Python entièrement fonctionnel a été construit pour ingérer, traiter et classer le trafic réseau IoT.
+    \item \textbf{Classification Haute Performance :} Nous avons atteint une Précision Équilibrée maximale de \textbf{97.5\%} en utilisant XGBoost sur les données de fenêtre 7 secondes.
+    \item \textbf{Caractérisation des Attaques :} Nous avons différencié avec succès 7 types d'attaques distincts, avec des scores F1 dépassant 0.90 pour la plupart des catégories.
+    \item \textbf{Benchmarking :} Nous avons établi que le Gradient Boosting (non linéaire) surpasse largement les références linéaires (Régression Logistique, SVC) et que des fenêtres temporelles plus longues aident généralement la classification supervisée.
+\end{enumerate}
+
+\subsection{Recommandations Opérationnelles}
+Pour un déploiement réel dans un environnement IoT Industriel (IIoT) :
+\begin{itemize}
+    \item Déployer des modèles \textbf{XGBoost} entraînés sur des fenêtres de 5s ou 7s pour la détection primaire.
+    \item Exécuter \textbf{Isolation Forest} en parallèle sur des fenêtres de 1s pour capturer les anomalies soudaines et courtes qui pourraient être moyennées dans des fenêtres plus longues.
+    \item Concentrer l'ingénierie des caractéristiques sur les \textbf{Deltas Temporels} et les \textbf{Tailles de Paquets}, car ce sont les signaux les plus discriminants.
+\end{itemize}
+
+\subsection{Travaux Futurs : Robustesse Adversariale}
+Bien que nos modèles fonctionnent bien sur des jeux de données statiques, la prochaine étape (décrite dans l'Objectif 2) est d'évaluer les \textbf{Attaques Adverses}. Des attaquants intelligents pourraient manipuler le timing des paquets (modifiant le \texttt{time-delta}) ou faire du rembourrage de paquets (modifiant la \texttt{packet-size}) pour échapper à nos meilleures caractéristiques. Développer des modèles robustes à de telles perturbations — peut-être en les entraînant sur des exemples générés de manière adversariale — est la prochaine frontière critique pour ce projet.
+
+\newpage
+\appendix
+\section{Annexe : Extraits de Code}
+
+\subsection{Chargement des Données}
+\begin{lstlisting}[language=Python, caption=Fonction de Chargement des Données]
+def load_and_merge_data(duration_sec):
+    print(f"\n\nProcessing duration: {duration_sec} s")
+    attack_file = f"attack_samples_{duration_sec}sec.csv"
+    benign_file = f"benign_samples_{duration_sec}sec.csv"
+    
+    attack_data = pd.read_csv(DATA_FOLDER + ATTACK_FOLDER + attack_file)
+    benign_data = pd.read_csv(DATA_FOLDER + BENIGN_FOLDER + benign_file)
+    
+    combined_data = pd.concat([attack_data, benign_data])
+    return combined_data.sample(frac=1).reset_index(drop=True)
+\end{lstlisting}
+
+\subsection{Visualisation SHAP}
+\begin{lstlisting}[language=Python, caption=Traçage SHAP]
+def plot_shap(model, X_train):
+    explainer = shap.TreeExplainer(model)
+    explanation = explainer(X_train)
+    shap.plots.beeswarm(explanation)
+\end{lstlisting}
+
+\end{document}
