@@ -66,9 +66,9 @@
 
 \section{Introduction}
 
-La prolifération des appareils de l'Internet des Objets (IoT) dans les environnements industriels et grand public a créé une surface d'attaque massive pour les cybercriminels. Contrairement aux infrastructures informatiques traditionnelles, les appareils IoT souffrent souvent d'une puissance de calcul limitée, de mises à jour peu fréquentes et de protocoles hétérogènes, ce qui les rend vulnérables à un large éventail d'attaques réseau telles que le Déni de Service (DoS), l'Homme du Milieu (MitM) et les injections de logiciels malveillants.
+La prolifération des appareils de l'Internet des Objets (IoT) dans les environnements industriels et grand public a créé une surface d'attaque massive pour les cybercriminels. Contrairement aux infrastructures informatiques traditionnelles, les appareils IoT souffrent souvent d'une puissance de calcul limitée, de mises à jour peu fréquentes et de protocoles hétérogènes, ce qui les rend vulnérables à un large éventail d'attaques réseau telles que le DoS, MitM et les injections de logiciels malveillants.
 
-Le projet \textbf{CYBERML} vise à relever ces défis en concevant, déployant et évaluant une chaîne de traitement de données robuste dédiée à l'analyse de la cybersécurité. La philosophie centrale de ce projet est de tirer parti des techniques d'Apprentissage Automatique (Machine Learning - ML) pour automatiser la détection des activités malveillantes au sein du trafic réseau.
+Le projet \textbf{CYBERML} vise à relever ces défis en concevant, déployant et évaluant une chaîne de traitement de données robuste dédiée à l'analyse de la cybersécurité. La philosophie centrale de ce projet est de tirer parti des techniques d'Apprentissage Automatique pour automatiser la détection des activités malveillantes au sein du trafic réseau.
 
 Ce rapport documente l'ensemble du cycle de vie de notre analyse, de l'ingestion et du pré-traitement des données à l'évaluation rigoureuse (benchmarking) des algorithmes de classification et de détection d'anomalies. Nous avons choisi le jeu de données \textbf{CIC IoT-DIAD 2024} comme vérité terrain, en l'analysant à travers plusieurs configurations de fenêtres temporelles (1s, 3s, 5s, 7s) pour comprendre la dynamique temporelle de la détection d'attaques.
 
@@ -158,7 +158,7 @@ Compte tenu du déséquilibre potentiel des classes dans les jeux de données de
 
 \subsubsection{Apprentissage Non Supervisé (Détection d'Anomalies)}
 \begin{enumerate}
-    \item \textbf{Isolation Forest :} Un algorithme qui isole les observations en sélectionnant aléatoirement une caractéristique puis en sélectionnant aléatoirement une valeur de coupure. Les anomalies sont isolées plus rapidement (chemins plus courts) que les points normaux. Nous avons fixé la contamination $\approx 0.39$.
+    \item \textbf{Isolation Forest :} Un algorithme qui isole les observations en sélectionnant aléatoirement une caractéristique puis en sélectionnant aléatoirement une valeur de coupure. Les anomalies sont isolées plus rapidement (chemins plus courts) que les points normaux. Nous avons fixé la contamination $\approx 0.39$, ce qui correspond à la proportion de données d'attaque.
     \item \textbf{One-Class SVM :} Capture la forme des données d'entraînement "Bénines" et classe les valeurs aberrantes. Nous avons utilisé un noyau linéaire et un sous-échantillonnage en raison de l'intensité de calcul.
     \item \textbf{Local Outlier Factor (LOF) :} Un algorithme qui calcule la déviation de densité locale d'un point donné par rapport à ses voisins.
 \end{enumerate}
@@ -221,7 +221,7 @@ La Régression Logistique a eu du mal par rapport à XGBoost, en particulier sur
 \end{itemize}
 
 \subsubsection{Linear SVC}
-Le classifieur à vecteurs de support a performé marginalement mieux que la Régression Logistique.
+Le classifieur à vecteurs de support a performé un petit peu mieux que la Régression Logistique.
 \begin{itemize}
     \item \textbf{MCC :} 0.7950
     \item \textbf{Précision Équilibrée :} 0.8748
@@ -251,7 +251,7 @@ Les principales caractéristiques pilotant la détection pour la fenêtre 1s ét
     \item \texttt{network\_time-delta\_min} (Impact : 1.442)
     \item \texttt{network\_window-size\_min} (Impact : 1.312)
 \end{enumerate}
-Cela indique que les attaques à cette granularité sont mieux détectées en regardant les tailles minimales de paquets et la vitesse (delta temporel) des paquets entrants.
+Cela indique que les attaques sont mieux détectées en regardant les tailles minimales de paquets et la vitesse des paquets entrants.
 
 \newpage
 \section{Résultats Expérimentaux : Durée 3 Secondes}
@@ -327,7 +327,7 @@ La tendance à l'amélioration de la performance supervisée se poursuit.
 \end{itemize}
 
 \subsubsection{Régression Logistique \& SVC}
-Les deux ont atteint un MCC d'$\approx 0.82$, suggérant un "plafond" pour la séparabilité linéaire dans ce jeu de données.
+Les deux ont atteint un MCC d'$\approx 0.82$, suggérant un "plafond" dans ce jeu de données.
 
 \subsection{Résultats Apprentissage Non Supervisé}
 \begin{itemize}
@@ -337,8 +337,6 @@ Les deux ont atteint un MCC d'$\approx 0.82$, suggérant un "plafond" pour la s�
 
 \newpage
 \section{Résultats Expérimentaux : Durée 7 Secondes}
-
-Il s'agit de la plus grande fenêtre d'agrégation.
 
 \subsection{Résultats Apprentissage Supervisé}
 
@@ -371,7 +369,7 @@ Il s'agit de la plus grande fenêtre d'agrégation.
 Stables à un MCC $\approx 0.81$, confirmant que l'extension de la durée profite davantage aux modèles non linéaires complexes (XGBoost) qu'aux modèles linéaires.
 
 \subsection{Résultats Apprentissage Non Supervisé}
-Isolation Forest reste constant autour d'un MCC de 0.46. Il semble que pour la détection d'anomalies, l'agrégation des caractéristiques sur 7s ne rend pas les valeurs aberrantes plus distinctes d'une manière qu'Isolation Forest puisse exploiter mieux qu'à 1s.
+Isolation Forest reste constant autour d'un MCC de 0.46. Il semble que pour la détection d'anomalies, les caractéristiques sur 7s ne rend pas les valeurs aberrantes plus distinctes d'une manière qu'Isolation Forest puisse exploiter mieux qu'à 1s.
 
 \subsection{Importance des Caractéristiques (7s)}
 Changement intéressant dans les caractéristiques par rapport à 1s :
@@ -417,7 +415,7 @@ Le modèle a atteint un score F1 moyen pondéré de \textbf{0.97}.
 La matrice de confusion révèle des erreurs de classification spécifiques :
 \begin{itemize}
     \item \textbf{Reconnaissance :} Souvent confondu avec le trafic bénin ou d'autres attaques (Rappel de 0.92, inférieur aux DoS). C'est attendu car les scans de reconnaissance peuvent ressembler à des tentatives de connexion normales.
-    \item \textbf{Attaques Web :} Ont eu le rappel le plus faible (0.81). Les attaques Web ressemblent souvent à du trafic HTTP valide, ce qui les rend les plus difficiles à distinguer sur la base de simples statistiques réseau sans inspection approfondie des paquets (DPI).
+    \item \textbf{Attaques Web :} Ont eu le rappel le plus faible (0.81). Les attaques Web ressemblent souvent à du trafic HTTP valide, ce qui les rend les plus difficiles à distinguer sur la base de simples statistiques réseau sans inspection approfondie des paquets.
     \item \textbf{DDoS vs DoS :} Très haute précision pour distinguer ces deux types, probablement grâce aux caractéristiques \texttt{network\_macs\_all\_count} ou \texttt{ips\_src\_count} qui sont distinctes (Distribué vs Source Unique).
 \end{itemize}
 
@@ -453,7 +451,7 @@ L'une des principales découvertes de cette étude est la corrélation positive 
 Les méthodes non supervisées ont significativement sous-performé par rapport aux méthodes supervisées ($MCC \approx 0.5$ vs $MCC > 0.9$).
 \begin{itemize}
     \item \textbf{Implication :} Bien qu'Isolation Forest puisse détecter $\approx 70-80\%$ des attaques, le taux de fausses alarmes est trop élevé pour un déploiement autonome dans une infrastructure critique. Cela nécessite une validation humaine ou un filtre secondaire.
-    \item \textbf{Usage :} Les méthodes non supervisées restent précieuses pour la \textbf{défense de Niveau 1} ou comme solution de repli pour détecter de nouvelles attaques que le modèle supervisé (entraîné sur des attaques connues) pourrait manquer.
+    \item \textbf{Usage :} Les méthodes non supervisées peuvent rester précieuses pour des détection sur l'échelle 1s, ou comme solution de repli pour détecter de nouvelles attaques que le modèle supervisé (entraîné sur des attaques connues) pourrait manquer.
 \end{itemize}
 
 \subsection{Stabilité des Caractéristiques}
@@ -477,7 +475,7 @@ Pour un déploiement réel dans un environnement IoT Industriel (IIoT) :
 \begin{itemize}
     \item Déployer des modèles \textbf{XGBoost} entraînés sur des fenêtres de 5s ou 7s pour la détection primaire.
     \item Exécuter \textbf{Isolation Forest} en parallèle sur des fenêtres de 1s pour capturer les anomalies soudaines et courtes qui pourraient être moyennées dans des fenêtres plus longues.
-    \item Concentrer l'ingénierie des caractéristiques sur les \textbf{Deltas Temporels} et les \textbf{Tailles de Paquets}, car ce sont les signaux les plus discriminants.
+    \item Concentrer l'ingénierie des caractéristiques sur les \textbf{Deltas Temporels} et les \textbf{Tailles de Paquets}, car ce sont les signaux les plus importants.
 \end{itemize}
 
 \subsection{Travaux Futurs : Robustesse Adversariale}
